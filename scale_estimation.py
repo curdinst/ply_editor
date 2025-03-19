@@ -74,21 +74,33 @@ for file_name in os.listdir(poses_path):
 # print(tf_25_50[:3,3])
 # print(1/s_25_star)
 
-def estimate_scale(tf_01, tf_10) -> float:
+def estimate_scale(tf_01, tf_10, tf_02, tf_12) -> float:
     r_01 = tf_01[:3, :3]
     r_10 = tf_10[:3, :3]
+    r_02 = tf_02[:3, :3]
 
     t_01 = tf_01[:3, 3]
     t_10 = tf_10[:3, 3]
+    t_02 = tf_02[:3, 3]
+
+    # tf_12 = np.linalg.inv(tf_01) @ tf_02
+    # r_12 = tf_12[:3, :3]
+    # t_12 = tf_12[:3, 3]
+    # print(r_01, r_10.T)
+    # print(t_01, -r_10.T @ t_10)
 
     s = np.linalg.lstsq((r_10.T @ t_10).reshape(-1, 1), -t_01.reshape(-1, 1), rcond=None)[0].item()
+    # s = np.linalg.norm(t_01) / np.linalg.norm(r_10.T @ t_10)
+    error = np.linalg.norm((r_10.T @ t_10 * s) + t_01)
+    print(f"Least squares error: {error}")
+
     return s
 
-tf_10_0 = np.array([[ 9.9256e-01,  1.3876e-02, -1.2093e-01, -6.6544e-01],
-          [-1.4295e-02,  9.9989e-01, -2.5974e-03,  2.9687e-01],
-          [ 1.2088e-01,  4.3067e-03,  9.9266e-01, -1.4825e-02],
-          [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00]])
-s_10 = estimate_scale(tf_dict["0_10"], tf_10_0)
-print(s_10)
+# tf_10_0 = np.array([[ 9.9256e-01,  1.3876e-02, -1.2093e-01, -6.6544e-01],
+#           [-1.4295e-02,  9.9989e-01, -2.5974e-03,  2.9687e-01],
+#           [ 1.2088e-01,  4.3067e-03,  9.9266e-01, -1.4825e-02],
+#           [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00]])
+# s_10 = estimate_scale(tf_dict["0_10"], tf_10_0)
+# print(s_10)
 
 

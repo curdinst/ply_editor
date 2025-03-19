@@ -56,25 +56,7 @@ for file_name in os.listdir(poses_path):
         index0 = file_name.split('_')[1]
         index1 = file_name.split('_')[2].split('.')[0]
         with open(os.path.join(poses_path, file_name), 'r') as f:
-            tf_dict[index0 + "_" + index1] = json.load(f)
-
-# Convert the transformation matrices from lists to numpy arrays
-for key in tf_dict:
-    tf_dict[key] = np.array(tf_dict[key]).squeeze()
-    # print(np.array(tf_dict[key]))
-    # print(tf_dict[key][:3, 3])
-    # break
-
-# file0 = "1214f2a11a9fc1ed_10-60.ply"
-# file0 = "1214f2a11a9fc1ed_60_120.ply"
-# file1 = "1214f2a11a9fc1ed_120_180.ply"
-# file3 = "1214f2a11a9fc1ed_180_240.ply"
-
-# file0 = "1214f2a11a9fc1ed_90_120.ply"
-# file1 = "1214f2a11a9fc1ed_120_150.ply"
-# file0 = "1214f2a11a9fc1ed_120_150.ply"
-# file1 = "1214f2a11a9fc1ed_150_180.ply"
-# file2 = "1214f2a11a9fc1ed_180_210.ply"
+            tf_dict[index0 + "_" + index1] = np.array(json.load(f)).squeeze()
 
 ply_frame_0 = file0.split('_')[1]
 print(file0)
@@ -85,73 +67,47 @@ print("Last two digits of file0:",ply_frame_0, ply_frame_1)
 files = [file0, file1]
 
 file_paths = [OUTPUT_PATH + file for file in files]
-# path_file0 = OUTPUT_PATH + file0
-# path_file1 = OUTPUT_PATH + file1
 
 
-for file in DATASET_FILES:
-    dataset_filepath = DATASET_PATH + file
-    dataset = torch.load(dataset_filepath)
-    keys = [dataset[i]["key"] for i in range(len(dataset))]
-    if KEY in keys:
-        print(f"Found key {KEY} in {file} at idx {keys.index(KEY)}")
-        idx = keys.index(KEY)
-        data = dataset[idx]
-        break
+def get_gt_tfs():
+    for file in DATASET_FILES:
+        dataset_filepath = DATASET_PATH + file
+        dataset = torch.load(dataset_filepath)
+        keys = [dataset[i]["key"] for i in range(len(dataset))]
+        if KEY in keys:
+            print(f"Found key {KEY} in {file} at idx {keys.index(KEY)}")
+            idx = keys.index(KEY)
+            data = dataset[idx]
+            break
+    print(data.keys())
+    transfomrs = data["cameras"]
+    print("num frames: ", len(transfomrs))
 
-print(data.keys())
-transfomrs = data["cameras"]
-print("num frames: ", len(transfomrs))
+    frame0 = transfomrs[FRAMES[0]][6:].reshape(3,4)
+    frame1 = transfomrs[FRAMES[1]][6:].reshape(3,4)
+    frame2 = transfomrs[FRAMES[2]][6:].reshape(3,4)
+    # frame3 = transfomrs[FRAMES[3]][6:].reshape(3,4)
+    frame0 = torch.vstack([frame0, torch.tensor([0, 0, 0, 1])])
+    frame1 = torch.vstack([frame1, torch.tensor([0, 0, 0, 1])])
+    frame2 = torch.vstack([frame2, torch.tensor([0, 0, 0, 1])])
+    # frame3 = torch.vstack([frame3, torch.tensor([0, 0, 0, 1])])
 
-frame0 = transfomrs[FRAMES[0]][6:].reshape(3,4)
-frame1 = transfomrs[FRAMES[1]][6:].reshape(3,4)
-frame2 = transfomrs[FRAMES[2]][6:].reshape(3,4)
-# frame3 = transfomrs[FRAMES[3]][6:].reshape(3,4)
-frame0 = torch.vstack([frame0, torch.tensor([0, 0, 0, 1])])
-frame1 = torch.vstack([frame1, torch.tensor([0, 0, 0, 1])])
-frame2 = torch.vstack([frame2, torch.tensor([0, 0, 0, 1])])
-# frame3 = torch.vstack([frame3, torch.tensor([0, 0, 0, 1])])
+    # print(frame0)
+    # print(frame1)
+    tf_10 = np.linalg.inv(frame1) @ frame0
+    tf_21 = np.linalg.inv(frame2) @ frame1
+    # tf_32 = np.linalg.inv(frame3) @ frame2
 
-# print(frame0)
-# print(frame1)
-tf_10 = np.linalg.inv(frame1) @ frame0
-tf_21 = np.linalg.inv(frame2) @ frame1
-# tf_32 = np.linalg.inv(frame3) @ frame2
-
-t1 = np.linalg.norm(tf_10[:3, 3])
-t2 = np.linalg.norm(tf_21[:3, 3])
-# t3 = np.linalg.norm(tf_32[:3, 3])
-print("norm 1", t1)
-print("norm 2", t2)
-print(t2/t1)
-
-img1, img2, img3 = 10, 60, 120
-img1, img2, img3 = 60, 120, 180
-img1, img2, img3 = 90, 120, 150
-img4, img5 = 280, 240
+    t1 = np.linalg.norm(tf_10[:3, 3])
+    t2 = np.linalg.norm(tf_21[:3, 3])
+    # t3 = np.linalg.norm(tf_32[:3, 3])
+    print("norm 1", t1)
+    print("norm 2", t2)
+    print(t2/t1)
+    return t1, t2
 
 
-image0 = data["images"][img1]
-image1 = data["images"][img2]
-image2 = data["images"][img3]
-# print(image0.shape)
-
-img = util_gau.convert_images([image0, image1, image2])
-print("image shape: ", img[0,:,:,:].shape)
-image0 = img[0,:,:,:]
-image1 = img[1,:,:,:]
-image2 = img[2,:,:,:]
-
-# Convert image0 from torch.Size([3, 360, 640]) to [360, 640, 3]
-image0 = image0.permute(1, 2, 0).numpy()
-image1 = image1.permute(1, 2, 0).numpy()
-image2 = image2.permute(1, 2, 0).numpy()
-
-print(data["url"])
-
-# tf_1_to_0 = tf_60_10
-# tf_1_to_0 = np.linalg.inv(tf_1_to_0)
-# print(data["timestamps"])
+# print(data["url"])
 
 # print("offset dist ", np.linalg.norm(tf_1_to_0[:3, 3]))
 print("ply files: ", file_paths)
@@ -160,7 +116,6 @@ gauss_1 = util_gau.load_ply(file_paths[1])
 # gauss_2 = util_gau.load_ply(file_paths[2])
 
 def colorboost(channel_idx, sh):
-    # add_boosts = np.clip(np.max(sh[:, channel_idx]) - sh[:, channel_idx], COLOR_BOOST)
     # sub_boosts
     sh[:, channel_idx] += np.ones_like(sh[:, channel_idx])*COLOR_BOOST
     other_channels = [i for i in range(3) if i != channel_idx]
@@ -214,15 +169,6 @@ def fuse_maps(gaussians0, gaussians1, tf_1_to_0, gt_t1, gt_t2):
 used_tf = str(FRAMES[1]) + "_" + str(FRAMES[0])
 print("used_tf: ", used_tf)
 fused_map = fuse_maps(gauss_0, gauss_1, tf_dict["0_10"], t1, t2)
-
-# tf2 = tf_dict["25_50"]
-# tf2[:3, 3] = tf2[:3, 3] * t1/t2
-# fused_map = fuse_maps(fused_map, gauss_2, tf2@tf_dict["0_25"], t1, t3)
-
-
-
-# fused_map = fuse_maps(fused_map, gauss_2, tf_180_150@tf_150_120)
-# fused_map = fuse_maps(fused_map, gauss_2, tf_120_60 @ tf_60_10)
 
 filename = "fused_map_seq_" + str(ply_frame_0) + "_" + str(ply_frame_1) + "_" + str(ply_frame_2)
 if COLORED:
