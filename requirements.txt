@@ -5,3 +5,8 @@ PyOpenGL
 numpy
 imageio
 plyfile
+torch
+torchvision
+matplotlib
+jaxtyping
+scipy

@@ -8,28 +8,28 @@ import scipy.spatial.transform
 
 DATE = "25_03_13"
 
-FRAMES = [0, 10, 250]
+FRAMES = [10, 20, 30]
 IMGPATH = "/home/curdin/master_thesis/images/"
 DATASET_PATH = "/home/curdin/noposplat/NoPoSplat/datasets/re10k/test/"
 DATASET_FILES = ["000000.torch",  "000001.torch",  "000002.torch"]
 # KEY = "1214f2a11a9fc1ed"
-# KEY = "c48f19e2ffa52523"
+KEY = "c48f19e2ffa52523"
 
 PATH = "/home/curdin/master_thesis/outputs/" + DATE + "/"
 
 OUTPUT_PATH = "/home/curdin/master_thesis/outputs/" + DATE + "/gaussians/"
 
 
-# for file in DATASET_FILES:
-#     dataset_filepath = DATASET_PATH + file
-#     dataset = torch.load(dataset_filepath)
-#     keys = [dataset[i]["key"] for i in range(len(dataset))]
-#     if KEY in keys:
-#         print(f"Found key {KEY} in {file} at idx {keys.index(KEY)}")
-#         idx = keys.index(KEY)
-#         data = dataset[idx]
-#         # print("key at index 3: ", keys[3])
-#         break
+for file in DATASET_FILES:
+    dataset_filepath = DATASET_PATH + file
+    dataset = torch.load(dataset_filepath)
+    keys = [dataset[i]["key"] for i in range(len(dataset))]
+    if KEY in keys:
+        print(f"Found key {KEY} in {file} at idx {keys.index(KEY)}")
+        idx = keys.index(KEY)
+        data = dataset[idx]
+        # print("key at index 3: ", keys[3])
+        break
 
 def get_transforms(frames, key):
     for file in DATASET_FILES:
@@ -75,68 +75,68 @@ def get_transforms(frames, key):
 # print("norm 1", t1)
 # print("norm 2", t2)
 
-# [img1, img2, img3] = FRAMES
+[img1, img2, img3] = FRAMES
 
-# # img1, img2, img3 = 10, 60, 120
-# # img1, img2, img3 = 60, 120, 180
-# # img1, img2, img3 = 90, 120, 150
-# # img4, img5 = 280, 240
+# img1, img2, img3 = 10, 60, 120
+# img1, img2, img3 = 60, 120, 180
+# img1, img2, img3 = 90, 120, 150
+# img4, img5 = 280, 240
 
 
-# image0 = data["images"][img1]
-# image1 = data["images"][img2]
-# image2 = data["images"][img3]
-# # print(image0.shape)
+image0 = data["images"][img1]
+image1 = data["images"][img2]
+image2 = data["images"][img3]
+# print(image0.shape)
 
-# img = util_gau.convert_images([image0, image1, image2])
-# print("image shape: ", img[0,:,:,:].shape)
-# image0 = img[0,:,:,:]
-# image1 = img[1,:,:,:]
-# image2 = img[2,:,:,:]
+img = util_gau.convert_images([image0, image1, image2])
+print("image shape: ", img[0,:,:,:].shape)
+image0 = img[0,:,:,:]
+image1 = img[1,:,:,:]
+image2 = img[2,:,:,:]
 
-# # Convert image0 from torch.Size([3, 360, 640]) to [360, 640, 3]
-# image0 = image0.permute(1, 2, 0).numpy()
-# image1 = image1.permute(1, 2, 0).numpy()
-# image2 = image2.permute(1, 2, 0).numpy()
-# # Plot the images
-# plt.subplot(131)
-# plt.imshow(image0)
-# plt.title("Input frame " + str(img1))
+# Convert image0 from torch.Size([3, 360, 640]) to [360, 640, 3]
+image0 = image0.permute(1, 2, 0).numpy()
+image1 = image1.permute(1, 2, 0).numpy()
+image2 = image2.permute(1, 2, 0).numpy()
+# Plot the images
+plt.subplot(131)
+plt.imshow(image0)
+plt.title("Input frame " + str(img1))
 
-# plt.subplot(132)
-# plt.imshow(image1)
-# plt.title("Input frame " + str(img2))
+plt.subplot(132)
+plt.imshow(image1)
+plt.title("Input frame " + str(img2))
 
-# plt.subplot(133)
-# plt.imshow(image2)
-# plt.title("Input frame " + str(img3))
+plt.subplot(133)
+plt.imshow(image2)
+plt.title("Input frame " + str(img3))
 
-# plt.gcf().set_size_inches(18, 6)
-# plt.savefig(IMGPATH + "Input_frames_seq_" + str(img1) + "-" + str(img2) + "-" + str(img3) + ".png")
-# plt.show()
+plt.gcf().set_size_inches(18, 6)
+plt.savefig(IMGPATH + "Input_frames_seq_" + str(img1) + "-" + str(img2) + "-" + str(img3) + ".png")
+plt.show()
 
 # Calculate the transformation matrix from frame0 to frame1
-# tf_1_to_0 = torch.linalg.inv(frame1) @ frame0
-# print("Transformation matrix from frame1 to frame0:")
-# print(tf_1_to_0)
-# # Convert tf_1_to_0 to numpy array
-# GT_tf_1_to_0 = tf_1_to_0.numpy()
+tf_1_to_0 = torch.linalg.inv(frame1) @ frame0
+print("Transformation matrix from frame1 to frame0:")
+print(tf_1_to_0)
+# Convert tf_1_to_0 to numpy array
+GT_tf_1_to_0 = tf_1_to_0.numpy()
 # Plot the images
-# plt.subplot(131)
-# plt.imshow(image0)
-# plt.title("Input frame " + str(img1))
+plt.subplot(131)
+plt.imshow(image0)
+plt.title("Input frame " + str(img1))
 
-# plt.subplot(132)
-# plt.imshow(image1)
-# plt.title("Input frame " + str(img2))
+plt.subplot(132)
+plt.imshow(image1)
+plt.title("Input frame " + str(img2))
 
-# plt.subplot(133)
-# plt.imshow(image2)
-# plt.title("Input frame " + str(img3))
+plt.subplot(133)
+plt.imshow(image2)
+plt.title("Input frame " + str(img3))
 
-# plt.gcf().set_size_inches(18, 6)
+plt.gcf().set_size_inches(18, 6)
 # plt.savefig(IMGPATH + "Input_frames_seq_" + str(img1) + "-" + str(img2) + "-" + str(img3) + ".png")
-# plt.show()
+plt.show()
 
 # Calculate the transformation matrix from frame0 to frame1
 # tf_1_to_0 = torch.linalg.inv(frame1) @ frame0

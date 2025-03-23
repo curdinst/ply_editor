@@ -77,20 +77,26 @@ for file_name in os.listdir(poses_path):
 def estimate_scale(tf_01, tf_10, tf_02, tf_12) -> float:
     r_01 = tf_01[:3, :3]
     r_10 = tf_10[:3, :3]
-    r_02 = tf_02[:3, :3]
+    r_12 = tf_12[:3, :3]
 
     t_01 = tf_01[:3, 3]
     t_10 = tf_10[:3, 3]
-    t_02 = tf_02[:3, 3]
+    t_12 = tf_12[:3, 3]
 
-    # tf_12 = np.linalg.inv(tf_01) @ tf_02
-    # r_12 = tf_12[:3, :3]
-    # t_12 = tf_12[:3, 3]
+    tf_12_scale = np.linalg.inv(tf_02) @ tf_01
+    r_12_scale = tf_12_scale[:3, :3]
+    t_12_scale = tf_12_scale[:3, 3]
+
+    print("------------------------- LSQ PROBLEM A @ x = b, A: \n", -r_10.T @ t_10, "\n b: \n", t_01)
+
     # print(r_01, r_10.T)
     # print(t_01, -r_10.T @ t_10)
 
-    s = np.linalg.lstsq((r_10.T @ t_10).reshape(-1, 1), -t_01.reshape(-1, 1), rcond=None)[0].item()
+    s = np.linalg.lstsq((-r_10.T @ t_10).reshape(-1, 1), t_01.reshape(-1, 1), rcond=None)[0].item()
     # s = np.linalg.norm(t_01) / np.linalg.norm(r_10.T @ t_10)
+    print(f"Scale: {s}")
+    # s1 = np.linalg.lstsq(r_12.reshape(-1, 1), r_12_scale.reshape(-1, 1), rcond=None)[0].item()
+    # print(f"Scale 1: {s1}")
     error = np.linalg.norm((r_10.T @ t_10 * s) + t_01)
     print(f"Least squares error: {error}")
 
