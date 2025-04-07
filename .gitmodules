@@ -1,0 +1,3 @@
+[submodule "gaussian_optimizer/submodules/diff-gaussian-rasterization-w-pose"]
+	path = gaussian_optimizer/submodules/diff-gaussian-rasterization-w-pose
+	url = git@github.com:rmurai0610/diff-gaussian-rasterization-w-pose.git
