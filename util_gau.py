@@ -153,6 +153,7 @@ def save_ply(path, gaussian_data):
     
     ply_element = PlyElement.describe(ply_array, 'vertex')
     PlyData([ply_element]).write(path)
+    print("Saved ply file to ", path)
 
 to_tensor = tf.ToTensor()
 def convert_images(

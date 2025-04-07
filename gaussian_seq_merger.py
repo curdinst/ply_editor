@@ -23,19 +23,22 @@ from scale_estimation import *
 from scale_aligning_icp import *
 # from show_imgs import *
 
-SEQUENCE = [0, 20, 10]
+SEQUENCE = [0, 100, 10]
 
 COLORED = True
-SCALED = True
-GTSCALED = False
+# SCALED = False
+# MEAN_SCALED = False
+# GTSCALED = True
 NOPOSCALED = False
-assert (SCALED and GTSCALED) == False
+[SCALED, GTSCALED, MEAN_SCALED] = [1, 0, 0]
+assert sum([SCALED, GTSCALED, MEAN_SCALED]) == 1, "Only one of SCALED, GTSCALED, or NOPOSCALED can be True"
 
 # DATE = "25_03_13_scale_inv_false"
 # DATE = "25_03_19"
 # DATE = "25_03_20_mb1False_relposeFalse"
 # DATE = "25_03_21"
-DATE = "25_03_21_re10kdl3dv"
+# DATE = "25_03_21_re10kdl3dv"
+DATE = "25_03_24_means"
 
 # FRAMES = [0, 10, 20]
 COLOR_BOOST = 0.8
@@ -70,6 +73,7 @@ for file_name in os.listdir(poses_path):
         with open(os.path.join(poses_path, file_name), 'r') as f:
             tf_dict[index0 + "_" + index1] = np.array(json.load(f)).squeeze()
     elif file_name.endswith('.pt') and KEY in file_name:
+        print(file_name)
         tf = torch.load(os.path.join(poses_path, file_name)).cpu()
         index0 = file_name.split('_')[1]
         index1 = file_name.split('_')[2].split('.')[0]
@@ -203,10 +207,10 @@ def scale_gaussians(gaussians, scale):
     return gaussians
 
 def run_icp(src, target, init_tf):
-    target = load_ply_file([0, 10])
-    src = load_ply_file([10, 20])
+    target = load_ply_file([0, 25])
+    src = load_ply_file([25, 50])
 
-    src.xyz *= np.linalg.norm(np.mean(target.xyz, axis=0))/np.linalg.norm(np.mean(src.xyz, axis=0))
+    # src.xyz *= np.linalg.norm(np.mean(target.xyz, axis=0))/np.linalg.norm(np.mean(src.xyz, axis=0))
     opacity_threshold = 0.6
     # print("median opacity: ", np.median(src.opacity))
     # src_mask = src.opacity > opacity_threshold
@@ -218,18 +222,25 @@ def run_icp(src, target, init_tf):
     # target_points = target.xyz[target_mask.squeeze(), :]
     src_points = src.xyz
     target_points = target.xyz
-    init_tf = np.eye(4)
+    # init_tf = np.eye(4)
+    init_tf = tf_dict["0_25"]
+
+    init_scale = (np.linalg.norm(np.mean(target.xyz, axis=1))/np.linalg.norm(np.mean(src.xyz, axis=1)))
+
     print("src_points: ", src.xyz.shape, src_points.shape)
     print("target_points: ", target.xyz.shape, target_points.shape)
-    aligned_source, transformation, scale = scale_aligning_icp(src_points, target_points, init_tf)
+    aligned_source, transformation, scale = scale_only_aligning_icp(src_points, target_points, init_tf, init_scale)
+    # scale = 1
+    transformation = init_tf
+    print(scale)
     src.xyz *= scale
-    fused_map = fuse_maps(src, target, transformation, 0, 0, 0)
-    save_path = Path(PATH + KEY + "/fused_map_icp.ply")
+    fused_map = fuse_maps(target, src, transformation, 0, 0, 0)
+    save_path = Path(PATH + KEY + "/fused_map_icp_scaled.ply")
     save_path.parent.mkdir(parents=True, exist_ok=True)
     util_gau.save_ply(save_path, fused_map)
     print(f"Saved fused map to {save_path}")
 
-    return aligned_source, transformation, scale
+    # return aligned_source, transformation, scale
 
 
 # Apply the transformation matrix tf_1_to_0 to gaussians1
@@ -278,14 +289,20 @@ def fuse_sequence(start_frame, end_frame, step):
     last_mean = np.linalg.norm(np.mean(fused_map.xyz, axis=0))
     print("mean: ", last_mean)
     tf_scaled_dict[str(start_frame) + "_" + str(start_frame+step)] = tf_dict[str(start_frame) + "_" + str(start_frame+step)] # first tf is in scale
-    colered, scaled = "", ""
+    colered, scaled = "", "unscaled_"
     if COLORED:
         colered = "color_"
-    if not SCALED:
-        scaled = "unscaled_"
-        if GTSCALED:
-            scaled = "gtscaled_"
-    filename = "fused_map_seq_icp" + scaled + colered + str(start_frame) + "_" + str(end_frame) + "_" + str(step) + ".ply"
+    if SCALED:
+        scaled = "scaled_"
+    elif GTSCALED:
+        scaled = "gt_scaled_"
+    elif MEAN_SCALED:
+        scaled = "mean_scaled_"
+    # if not SCALED:
+    #     scaled = "unscaled_"
+    #     if GTSCALED:
+    #         scaled = "gtscaled_"
+    filename = "fused_map_seq_" + scaled + colered + str(start_frame) + "_" + str(end_frame) + "_" + str(step) + ".ply"
     i = 0
     tf_scaled = [tf_dict[str(start_frame) + "_" + str(start_frame+step)]]
     for idx in range(start_frame, end_frame, step):
@@ -323,30 +340,39 @@ def fuse_sequence(start_frame, end_frame, step):
         mean = np.linalg.norm(np.mean(gaussians.xyz, axis=0))
         # print("mean: ", mean)
         means_scale = last_mean/mean
-        last_mean = mean*scale
-        if GTSCALED: scale = gt_scale
+        last_mean = mean*means_scale
+        # if GTSCALED: scale = gt_scale
         
         print("scale: ", scale, "means scale: ", means_scale, "gt scale: ", gt_scale)
         if SCALED:
             # print("mean:", np.linalg.norm(np.mean(gaussians.xyz, axis=0)))
             gaussians_scaled = scale_gaussians(gaussians, scale)
             print("mean after scaling:", np.linalg.norm(np.mean(gaussians_scaled.xyz, axis=0)))
+        elif MEAN_SCALED:
+            gaussians_scaled = scale_gaussians(gaussians, means_scale)
+        elif GTSCALED:
+            gaussians_scaled = scale_gaussians(gaussians, gt_scale)
         else:
             gaussians_scaled = gaussians
+            scale = 1
 
-        aligned_source, transformation, icp_scale = run_icp(gaussians_scaled, fused_map, tf_scaled[-1])
-        print("ICP transformation, scale: ", transformation, scale)
-        print(transformation.shape)
+        # aligned_source, transformation, icp_scale = run_icp(gaussians_scaled, fused_map, tf_scaled[-1])
+        # print("ICP transformation, scale: ", transformation, scale)
+        # print(transformation.shape)
         # h_cords = np.hstack([gaussians_scaled.xyz, np.ones((gaussians_scaled.xyz.shape[0], 1))])
         # transformed_coords = (tf_scaled[-1] @ h_cords.T).T[:, :3]
         # gaussians_scaled.xyz = transformed_coords
 
 
-        gaussians_scaled.xyz *= icp_scale
-        fused_map = fuse_maps(fused_map, gaussians_scaled, transformation, i%3, 0, 0)
+        # gaussians_scaled.xyz *= icp_scale
+        fused_map = fuse_maps(fused_map, gaussians_scaled, tf_scaled[-1], i%3, 0, 0)
         tf_12 = tf_dict[tf_12_key]
         if SCALED:
             tf_12[:3, 3] = tf_12[:3, 3] * scale
+        elif MEAN_SCALED:
+            tf_12[:3, 3] = tf_12[:3, 3] * means_scale
+        elif GTSCALED:
+            tf_12[:3, 3] = tf_12[:3, 3] * gt_scale
         tf_scaled_dict[tf_12_key] = tf_12
         tf_scaled.append(tf_scaled[-1] @ tf_12)
         last_gaussians = gaussians_scaled
@@ -358,9 +384,9 @@ def fuse_sequence(start_frame, end_frame, step):
 
 
 [startframe, endframe, step] = SEQUENCE
-# fuse_sequence(startframe, endframe, step)
+fuse_sequence(startframe, endframe, step)
 
-run_icp(None, None, None)
+# run_icp(None, None, None)
 
 
 # filename = "fused_map_seq_" + str(ply_frame_0) + "_" + str(ply_frame_1) + "_" + str(ply_frame_2)
